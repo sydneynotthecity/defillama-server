@@ -603,7 +603,18 @@ function getOnChainTvlAndActiveMcaps(
       stablecoinChainEntry
     ) {
       const [stablecoinChain, stablecoinMcap] = stablecoinChainEntry;
-      finalData[rwaId][RWA_KEY_MAP.onChain] = { ...(stablecoinChainMcap ?? {}) };
+      // Merge (don't replace): per-pk iteration order means an earlier pk on a
+      // chain NOT covered by peggedassets (e.g. Stellar BRZ) writes its mcap
+      // into onChainMcap via the on-chain path below. A subsequent pk on a
+      // chain covered by peggedassets (e.g. Gnosis BRZ) lands here and used to
+      // OVERWRITE onChainMcap with the peggedassets-only map, wiping the
+      // Stellar leg added moments earlier. Spread existing first to preserve
+      // those non-peggedassets chains, then overlay peggedassets values for
+      // the chains it covers.
+      finalData[rwaId][RWA_KEY_MAP.onChain] = {
+        ...(finalData[rwaId][RWA_KEY_MAP.onChain] ?? {}),
+        ...(stablecoinChainMcap ?? {}),
+      };
       if (!finalData[rwaId][RWA_KEY_MAP.price] && assetPrices[pk]?.price) {
         finalData[rwaId][RWA_KEY_MAP.price] = toFiniteNumberOrNull(assetPrices[pk].price);
       }

@@ -210,6 +210,22 @@ export async function storeHistoricalPG(inserts: any[], timestamp: number): Prom
     });
 }
 
+// Return the set of (timestamp, id) pairs already present in DAILY_RWA_PERPS_DATA
+// for the given list of day-start timestamps. Keys are formatted "${timestamp}:${id}".
+// Used by backfill scripts to skip rows that would otherwise overwrite prod data.
+export async function fetchExistingDailyKeysPG(timestamps: number[]): Promise<Set<string>> {
+    const keys = new Set<string>();
+    if (timestamps.length === 0) return keys;
+    const rows = await DAILY_RWA_PERPS_DATA.sequelize!.query(
+        `SELECT timestamp, id
+         FROM "${DAILY_RWA_PERPS_DATA.getTableName()}"
+         WHERE timestamp IN (:timestamps)`,
+        { replacements: { timestamps }, type: QueryTypes.SELECT }
+    ) as Array<{ timestamp: number; id: string }>;
+    for (const row of rows) keys.add(`${row.timestamp}:${row.id}`);
+    return keys;
+}
+
 // Store metadata records
 export async function storeMetadataPG(inserts: any[]): Promise<void> {
     const now = new Date();
