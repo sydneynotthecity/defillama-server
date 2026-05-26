@@ -514,20 +514,6 @@ function getActiveTvls(
 // in finalData[rwaId].contracts. Without this, the stablecoins-API multi-chain
 // map fans out onto IDs that share a Coingecko ID but don't live on every
 // chain that the canonical cgId asset does (the Ondo USDY phantom bug).
-function filterStablecoinsToContractChains(
-  finalData: any,
-  rwaId: string,
-  stablecoinsChainMap: StablecoinChainMcap
-): StablecoinChainMcap {
-  const contracts = finalData[rwaId]?.contracts ?? {};
-  const allowed = new Set<string>(Object.keys(contracts).map((c) => getChainIdFromDisplayName(c)));
-  const out: StablecoinChainMcap = {};
-  for (const [chain, mcap] of Object.entries(stablecoinsChainMap ?? {})) {
-    if (allowed.has(getChainIdFromDisplayName(chain))) out[chain] = mcap;
-  }
-  return out;
-}
-
 function getOnChainTvlAndActiveMcaps(
   assetPrices: any,
   tokenToProjectMap: any,
@@ -547,20 +533,22 @@ function getOnChainTvlAndActiveMcaps(
   };
 
   // Stablecoins-API is the priority source for tracked stablecoins (captures
-  // bridged / wrapped supply that raw totalSupply() can miss). Override mcap +
-  // activeMcap upfront; totalSupply is derived per-chain in the per-token loop
-  // below so it stays consistent: mcap = supply × price.
+  // bridged / wrapped supply that raw totalSupply() can miss). Pass through all
+  // chains from the stablecoins API — bridged/wrapped chains that aren't in the
+  // RWA spreadsheet's contracts list still count toward onChainMcap so it
+  // matches /stablecoin totals. totalSupply for those chains is derived in the
+  // backfill loop below so mcap = supply × price stays consistent.
   const stablecoinOverrideRwaIds: { [cgId: string]: string } = {};
   const stablecoinOverrideChainMcaps: { [cgId: string]: StablecoinChainMcap } = {};
   Object.keys(stablecoinsData).forEach((cgId: string) => {
     const rwaId = getStablecoinOverrideRwaId(cgId, stablecoinsData[cgId], coingeckoIdToRwaIds, finalData);
     if (!rwaId || !finalData[rwaId]) return;
-    const filtered = filterStablecoinsToContractChains(finalData, rwaId, stablecoinsData[cgId].chainMcap);
+    const chainMcap: StablecoinChainMcap = { ...(stablecoinsData[cgId].chainMcap ?? {}) };
     stablecoinOverrideRwaIds[cgId] = rwaId;
-    stablecoinOverrideChainMcaps[cgId] = filtered;
-    finalData[rwaId][RWA_KEY_MAP.onChain] = filtered;
+    stablecoinOverrideChainMcaps[cgId] = chainMcap;
+    finalData[rwaId][RWA_KEY_MAP.onChain] = { ...chainMcap };
     if (!finalData[rwaId][RWA_KEY_MAP.activeMcap] && finalData[rwaId][RWA_KEY_MAP.activeMcapChecked])
-      finalData[rwaId][RWA_KEY_MAP.activeMcap] = { ...filtered };
+      finalData[rwaId][RWA_KEY_MAP.activeMcap] = { ...chainMcap };
   });
 
   // An RWA can have multiple token addresses on the same chain; aggregate across
