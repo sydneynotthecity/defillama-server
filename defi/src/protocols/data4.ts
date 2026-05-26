@@ -367,8 +367,8 @@ const data4: Protocol[] = [
     gecko_id: "virtual-protocol",
     cmcId: "29420",
     category: "AI Agents",
-    chains: ["Base","Solana", "Ethereum"],
-    module: "dummy.js",
+    chains: ["Base"],
+    module: "virtuals-protocol/index.js",
     twitter: "virtuals_io",
     dimensions: {
       fees: "virtual-protocol"
@@ -2490,7 +2490,7 @@ const data4: Protocol[] = [
     symbol: "-",
     url: "https://superswap.ink/",
     description:
-      "SuperSwap is the first decentralized exchange (DEX) aggregator built on Ink, the Layer 2 blockchain developed by Kraken",
+      "SuperSwap is the gateway and trading layer for tokenized markets, unifying access to tokenized stocks, commodities, ETFs, currencies, bonds, and crypto across chains, issuers, and liquidity sources. Users can discover and trade assets through a single self-custodial interface with cross-chain execution, 24/7 markets, instant settlement, and permissionless global access. SuperSwap abstracts routing, bridging, issuer discovery, and onchain/offchain liquidity into one seamless trading experience",
     chain: "Ink",
     logo: `${baseIconsUrl}/superswap-ink.png`,
     audits: "0",
@@ -2501,7 +2501,8 @@ const data4: Protocol[] = [
     module: "dummy.js",
     twitter: "SuperSwapINK",
     dimensions: {
-      aggregators: "superswap"
+      aggregators: "superswap",
+      fees: "superswap",
     }
   },
   {
@@ -9602,7 +9603,7 @@ const data4: Protocol[] = [
   },
   {
     id: "5975",
-    name: "Clutch Markets",
+    name: "Clutch Markets Predictions",
     address: "arbitrum:0x05905af7933f89280aB258919F0dFA056CeD8e43",
     symbol: "CLUTCH",
     url: "https://clutch.market",
@@ -9610,12 +9611,13 @@ const data4: Protocol[] = [
     chain: "Arbitrum",
     logo: `${baseIconsUrl}/clutch-markets.jpg`,
     audits: "0",
-    gecko_id: "clutch",
-    cmcId: "35973",
+    gecko_id: null,
+    cmcId: null,
     category: "Prediction Market",
     chains: ["Arbitrum"],
     module: "clutch-market/index.js",
     twitter: "clutchmarkets",
+    parentProtocol: "parent#clutch-markets",
     listedAt: 1743442083,
     deadUrl: true,
   },
@@ -13986,7 +13988,8 @@ const data4: Protocol[] = [
     // parentProtocol: "parent#strike-finance",
     dimensions: {
       fees: "strike-finance",
-      derivatives: "strike-finance"
+      derivatives: "strike-finance",
+      "open-interest": "strike-finance-oi"
     }
   },
   {
@@ -19686,7 +19689,8 @@ const data4: Protocol[] = [
       derivatives: {
         adapter: "carbon",
         genuineSpikes: [["2025-10-10", "-"]]
-      }
+      },
+      "open-interest": "carbon",
     }
   },
   {
@@ -20679,7 +20683,8 @@ const data4: Protocol[] = [
     listedAt: 1752859467,
     dimensions: {
       fees: "bluefin-pro",
-      derivatives: "bluefin-pro"
+      derivatives: "bluefin-pro",
+      "open-interest": "bluefin-pro"
     }
   },
   /* { // unified under coinbase-btc adapter
@@ -22778,8 +22783,8 @@ const data4: Protocol[] = [
     name: "Liquid Perps",
     address: null,
     symbol: "-",
-    url: "https://referral.tryliquid.xyz/2ipV36wIl0b",
-    referralUrl: "https://referral.tryliquid.xyz/2ipV36wIl0b",
+    url: "https://referral.tryliquid.xyz/Wxg6W0U2r3b",
+    referralUrl: "https://referral.tryliquid.xyz/Wxg6W0U2r3b",
     description: "Liquid provides a way to trade Bitcoin, ETH, and trending tokens with up to 40x leverage",
     chain: "Hyperliquid L1",
     logo: `${baseIconsUrl}/liquid-perps.jpg`,
@@ -25891,7 +25896,7 @@ const data4: Protocol[] = [
   },
   {
     id: "6682",
-    name: "Pacifica",
+    name: "Pacifica Perps",
     address: null,
     symbol: "-",
     url: "https://app.pacifica.fi?referral=defillama",
@@ -25899,7 +25904,7 @@ const data4: Protocol[] = [
     description:
       "Pacifica is a decentralized perpetual futures exchange offering leverage trading through advanced order types and APIs",
     chain: "Solana",
-    logo: `${baseIconsUrl}/pacifica.jpg`,
+    logo: `${baseIconsUrl}/pacifica-perps.jpg`,
     audits: "2",
     gecko_id: null,
     cmcId: null,
@@ -25908,6 +25913,7 @@ const data4: Protocol[] = [
     module: "pacifica/index.js",
     twitter: "pacifica_fi",
     audit_links: ["https://docs.pacifica.fi/other/audits"],
+    parentProtocol: "parent#pacifica",
     listedAt: 1757349667,
     dimensions: {
       derivatives: "pacifica",
@@ -28070,7 +28076,7 @@ const data4: Protocol[] = [
     listedAt: 1759188001,
     dimensions: {
       derivatives: "symmio",
-      'open-interest': "symmio",
+      'open-interest': "symmio-oi",
       fees: "symmio"
     },
     hallmarks: [
@@ -28209,13 +28215,14 @@ const data4: Protocol[] = [
   },
   {
     id: "6789",
-    name: "Solstice USX",
+    name: "Solstice",
+    previousNames: ["Solstice USX"],
     address: "solana:SLXdx4BUt2v9uJQNzWqSfzTJ9UKLUDsvxHFMEEdrfgq",
     symbol: "SLX",
     url: "https://solstice.finance/",
     description: "Solstice is a synthetic stablecoin protocol built on Solana",
     chain: "Solana",
-    logo: `${baseIconsUrl}/solstice-usx.jpg`,
+    logo: `${baseIconsUrl}/solstice.jpg`,
     audits: "2",
     gecko_id: "solstice",
     cmcId: null,
@@ -29046,7 +29053,8 @@ const data4: Protocol[] = [
     parentProtocol: "parent#grvt",
     dimensions: {
       derivatives: "grvt-perps",
-      "open-interest": "grvt-perps",
+      "open-interest": "grvt-perps-oi",
+      "normalized-volume": "grvt",
    }
   },
   {

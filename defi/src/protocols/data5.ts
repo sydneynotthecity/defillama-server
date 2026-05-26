@@ -1721,6 +1721,7 @@ const data5: Protocol[] = [
     dimensions: {
        fees: "dipcoin-perps",
        derivatives: "dipcoin-perps",
+       "open-interest": "dipcoin-perps-oi"
     },
   },
   {
@@ -2422,6 +2423,14 @@ const data5: Protocol[] = [
     ],
     stablecoins: ["yuzu-usd"],
     listedAt: 1763085858,
+    dimensions: {
+      fees: {
+        adapter: "yuzu-money",
+        genuineSpikes: [
+          ['2026-04-24', 'NAV dropped in junior vault due to the rsEth exploit'], //https://x.com/YuzuMoneyX/status/2047530119380836847 
+        ]
+      },
+    },
   },
   {
     id: "6998",
@@ -2791,6 +2800,9 @@ const data5: Protocol[] = [
     github: ["piku-co"],
     stablecoins: ["usp"],
     listedAt: 1763513599,
+    dimensions: {
+      fees: "piku",
+    },
   },
   {
     id: "7013",
@@ -2914,7 +2926,13 @@ const data5: Protocol[] = [
     dimensions: {
       derivatives: "antarctic",
       fees: "antarctic",
-      "open-interest": "antarctic",
+      "open-interest": {
+        adapter: "antarctic-oi",
+        genuineSpikes: [
+          ['2026-05-25', '-'], //listing day
+        ]
+      },
+      "normalized-volume": "antarctic",
     },
   },
   {
@@ -12843,7 +12861,7 @@ const data5: Protocol[] = [
     symbol: "LIQ",
     url: "https://liquidium.fi/",
     description:
-      "Liquidium is a decentralized, cross-chain lending protocol for native assets. Users supply native assets like Bitcoin and borrow native assets like USDT on Ethereum through a non-custodial, pool-based architecture.",
+      "Liquidium is a decentralized, cross-chain lending protocol for native assets. Users supply native assets like Bitcoin and borrow native assets like USDT or USDC on Ethereum through a non-custodial, pool-based architecture.",
     chain: "ICP",
     logo: `${baseIconsUrl}/liquidium.jpg`,
     audits: "0",
@@ -14085,12 +14103,13 @@ const data5: Protocol[] = [
   },
   {
     id: "7539",
-    name: "Bitway",
+    name: "Bitway Earn",
+    previousNames: ["Bitway"], 
     address: "bsc:0x444045b0ee1ee319a660a5e3d604ca0ffa35acaa",
     symbol: "BTW",
     url: "https://bitway.com/",
     description:
-      "Bitway is a capital gateway connecting on-chain liquidity with global markets.",
+      "Bitway Earn is an asset management product from the Bitway suite that allows users to deploy on-chain capital into global investment opportunities. It functions as a comprehensive gateway for both retail and institutional players seeking to access yield globally.",
     chain: "Binance",
     logo: `${baseIconsUrl}/bitway.jpg`,
     audits: "2",
@@ -15759,6 +15778,7 @@ const data5: Protocol[] = [
     dimensions: {
       fees: "katana-perps",
       derivatives: "katana-perps",
+      "open-interest": "katana-perps-oi"
     },
   },
   {
@@ -16012,7 +16032,9 @@ const data5: Protocol[] = [
     dimensions: {
       derivatives: "bullbit-perp-dex",
       fees: "bullbit-perp-dex",
-    }
+      "open-interest": "bullbit-perp-dex-oi",
+    },
+    treasury: "bullbit-ai.js",
   },
   {
     id: "7626",
@@ -17593,13 +17615,13 @@ const data5: Protocol[] = [
     url: " ", // pending to add url https://armsys.xyz
     description:
       "Oracle-free LVR protection for Uniswap v4 LPs using volatility detection and Aave V3 yield routing",
-    chain: "Arbitrum",
+    chain: "Base",
     logo: `${baseIconsUrl}/armsys.jpg`,
     audits: "0",
     gecko_id: null,
     cmcId: null,
     category: "Yield",
-    chains: ["Arbitrum", "Base"],
+    chains: ["Base"],
     module: "armsys/index.js",
     twitter: "armsysxyz",
     github: ["ARMSys26"],

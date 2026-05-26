@@ -6630,7 +6630,8 @@ const data: Protocol[] = [
     parentProtocol: "parent#tokenlon",
     audit_links: ["https://github.com/consenlabs/tokenlon-contracts/tree/v5/audits"],
     dimensions: {
-      dexs: "tokenlon-dex"
+      dexs: "tokenlon-dex",
+      fees: "tokenlon-dex",
     }
   },
   {
@@ -13512,7 +13513,9 @@ The eWIT token is a custodial, wrapped version of the Witnet coin managed by the
     dimensions: {
       fees: "polymarket",
       dexs: "polymarket",
-      "open-interest": "polymarket-oi"
+      "open-interest": "polymarket-oi",
+      "active-users": "polymarket",
+      "new-users": "polymarket",
     },
     hallmarks: [
       ["2026-01-06", "Fee introduced in 15-minute crypto markets"],
@@ -19821,7 +19824,8 @@ The eWIT token is a custodial, wrapped version of the Witnet coin managed by the
     github: ["GainsNetwork"],
     dimensions: {
       fees: "gains-network",
-      derivatives: "gains-network"
+      derivatives: "gains-network",
+      "open-interest": "gains-network"
     }
   },
   {

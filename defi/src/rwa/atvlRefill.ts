@@ -45,7 +45,7 @@ import {
   toFiniteNumberOrNull,
   toFixedNumber,
 } from "./utils";
-import { sendMessage } from "../utils/discord";
+import { sendThrottledRwaAlert } from "./alerting";
 
 // ── Internal helpers (copied from atvl.ts — identical logic) ────────
 
@@ -786,7 +786,7 @@ export async function prepareAtvlContext(ids: string[] = []): Promise<AtvlContex
 export async function runAtvlForTimestamp(
   ts: number,
   context: AtvlContext,
-  options: { skipCircuitBreaker?: boolean; storeResults?: boolean } = {}
+  options: { skipCircuitBreaker?: boolean; skipAssetMoveGuard?: boolean; storeResults?: boolean } = {}
 ): Promise<{ [id: string]: any }> {
   const timestamp = ts != 0 ? getTimestampAtStartOfDay(ts) : 0;
   const { tokensSortedByChain, tokenToProjectMap, projectIdsMap, coingeckoIdToRwaIds, ids } = context;
@@ -849,16 +849,32 @@ export async function runAtvlForTimestamp(
     const circuitBreaker = await checkCircuitBreakers(finalData);
     console.log(`[timer] circuitBreaker: ${((performance.now() - tCB) / 1000).toFixed(1)}s`);
     if (circuitBreaker.triggered) {
-      const message = `ATVL Circuit Breaker Triggered - results NOT saved!\n${circuitBreaker.details.join("\n")}`;
+      const contributorsBlock = buildTripContributorsBlock(finalData, circuitBreaker.trippedMetrics);
+      const message =
+        `ATVL Circuit Breaker Triggered - results NOT saved!\n${circuitBreaker.details.join("\n")}\n\n${contributorsBlock}`;
       console.error(message);
-      await sendMessage(message, process.env.RWA_WEBHOOK!, false);
+      logCircuitBreakerDiagnostics(finalData, circuitBreaker.trippedMetrics);
+      try {
+        await sendThrottledRwaAlert({
+          alertKey: 'atvlCircuitBreaker',
+          message: truncateForDiscord(message),
+          formatted: false,
+        });
+      } catch (alertError) {
+        console.error('[circuit-breaker] failed to send alert:', (alertError as any)?.message);
+      }
       return finalData;
     }
   }
 
   if (options.storeResults) {
     const tStore = performance.now();
-    await Promise.all([timestamp == 0 ? storeMetadata(res) : Promise.resolve(), storeHistorical(res as any)]);
+    await Promise.all([
+      timestamp == 0 ? storeMetadata(res) : Promise.resolve(),
+      storeHistorical(res as any, {
+        skipAssetMoveGuard: options.skipAssetMoveGuard || ids.length > 0 || ts != 0,
+      }),
+    ]);
     console.log(`[timer] storeResults: ${((performance.now() - tStore) / 1000).toFixed(1)}s`);
   }
 
@@ -871,8 +887,14 @@ export async function runAtvlForTimestamp(
 
 const CIRCUIT_BREAKER_THRESHOLD = 0.5;
 
-async function checkCircuitBreakers(data: { [id: string]: any }): Promise<{ triggered: boolean; details: string[] }> {
+export type TripMetricName = "defiActiveTvl" | "onChainMcap" | "activeMcap";
+export interface TrippedMetric { name: TripMetricName; prev: number; curr: number; ratio: number; }
+
+async function checkCircuitBreakers(
+  data: { [id: string]: any }
+): Promise<{ triggered: boolean; details: string[]; trippedMetrics: TrippedMetric[] }> {
   const details: string[] = [];
+  const trippedMetrics: TrippedMetric[] = [];
 
   let newDefiActiveTvl = 0;
   let newOnChainMcap = 0;
@@ -902,9 +924,9 @@ async function checkCircuitBreakers(data: { [id: string]: any }): Promise<{ trig
 
   await initPG();
   const previous = await fetchLatestAggregateTotals();
-  if (!previous) return { triggered: false, details: [] };
+  if (!previous) return { triggered: false, details: [], trippedMetrics: [] };
 
-  const checks = [
+  const checks: { name: TripMetricName; prev: number; curr: number }[] = [
     { name: "defiActiveTvl", prev: previous.defiActiveTvl, curr: newDefiActiveTvl },
     { name: "onChainMcap", prev: previous.onChainMcap, curr: newOnChainMcap },
     { name: "activeMcap", prev: previous.activeMcap, curr: newActiveMcap },
@@ -916,8 +938,92 @@ async function checkCircuitBreakers(data: { [id: string]: any }): Promise<{ trig
     if (ratio > 1 + CIRCUIT_BREAKER_THRESHOLD || ratio < 1 - CIRCUIT_BREAKER_THRESHOLD) {
       const changePercent = ((ratio - 1) * 100).toFixed(2);
       details.push(`${name}: $${prev.toFixed(0)} -> $${curr.toFixed(0)} (${changePercent}% change)`);
+      trippedMetrics.push({ name, prev, curr, ratio });
     }
   }
 
-  return { triggered: details.length > 0, details };
+  return { triggered: details.length > 0, details, trippedMetrics };
+}
+
+// ── Trip diagnostics ────────────────────────────────────────────────
+// On a circuit-breaker trip, attach the top contributors with per-chain
+// breakdown to the Discord webhook (so the offender is visible in the
+// alert itself), mirror them to stderr, and dump the full payload to
+// disk so we can post-mortem intermittent upstream data spikes.
+const TRIP_TOP_N = 10;
+const TRIP_TOP_CHAINS_PER_ROW = 3;
+const DISCORD_MESSAGE_SAFE_LIMIT = 1900;
+
+function truncateForDiscord(message: string, maxLength = DISCORD_MESSAGE_SAFE_LIMIT): string {
+  if (message.length <= maxLength) return message;
+  const suffix = "\n\n[truncated for Discord; full diagnostics are in stderr]";
+  const headLimit = Math.max(0, maxLength - suffix.length);
+  const lastNewline = message.lastIndexOf("\n", headLimit);
+  const cutAt = lastNewline > maxLength * 0.6 ? lastNewline : headLimit;
+  return `${message.slice(0, cutAt)}${suffix}`;
+}
+
+function fmtTripUsd(v: number): string {
+  const abs = Math.abs(v);
+  if (abs >= 1e15) return `$${(v / 1e15).toFixed(2)}Q`;
+  if (abs >= 1e12) return `$${(v / 1e12).toFixed(2)}T`;
+  if (abs >= 1e9) return `$${(v / 1e9).toFixed(2)}B`;
+  if (abs >= 1e6) return `$${(v / 1e6).toFixed(2)}M`;
+  if (abs >= 1e3) return `$${(v / 1e3).toFixed(2)}K`;
+  return `$${v.toFixed(2)}`;
+}
+
+function getTripChainTotals(item: any, metric: TripMetricName): { total: number; byChain: { [chain: string]: number } } {
+  const byChain: { [chain: string]: number } = {};
+  if (metric === "defiActiveTvl") {
+    Object.entries(item?.[RWA_KEY_MAP.defiActive] ?? {}).forEach(([chain, protocols]: [string, any]) => {
+      if (!protocols || typeof protocols !== "object") return;
+      byChain[chain] = (Object.values(protocols) as any[]).reduce((s: number, v: any) => s + (Number(v) || 0), 0);
+    });
+  } else {
+    const source = metric === "onChainMcap" ? item?.[RWA_KEY_MAP.onChain] : item?.[RWA_KEY_MAP.activeMcap];
+    Object.entries(source ?? {}).forEach(([chain, val]) => {
+      byChain[chain] = Number(val) || 0;
+    });
+  }
+  return { byChain, total: Object.values(byChain).reduce((s, v) => s + v, 0) };
+}
+
+export function buildTripContributorsBlock(data: { [id: string]: any }, trippedMetrics: TrippedMetric[]): string {
+  const sections: string[] = [];
+  for (const { name } of trippedMetrics) {
+    const rows = Object.entries(data)
+      .map(([id, item]) => {
+        const { total, byChain } = getTripChainTotals(item, name);
+        const label = item?.ticker || item?.canonicalMarketId || item?.name || id;
+        return { id, label, total, byChain };
+      })
+      .filter((r) => r.total !== 0)
+      .sort((a, b) => Math.abs(b.total) - Math.abs(a.total))
+      .slice(0, TRIP_TOP_N);
+
+    const lines = [`── ${name} top ${rows.length} ──`];
+    rows.forEach((r, i) => {
+      const chains = Object.entries(r.byChain)
+        .sort(([, a], [, b]) => Math.abs(b) - Math.abs(a))
+        .slice(0, TRIP_TOP_CHAINS_PER_ROW)
+        .map(([chain, v]) => `${chain}=${fmtTripUsd(v)}`)
+        .join(", ");
+      lines.push(`  ${String(i + 1).padStart(2)}. ${r.label}#${r.id}  ${fmtTripUsd(r.total)}  [${chains}]`);
+    });
+    sections.push(lines.join("\n"));
+  }
+  return sections.join("\n\n");
+}
+
+export function logCircuitBreakerDiagnostics(
+  data: { [id: string]: any },
+  trippedMetrics: TrippedMetric[],
+): void {
+  try {
+    const block = buildTripContributorsBlock(data, trippedMetrics);
+    block.split("\n").forEach((line) => console.error(`[circuit-breaker] ${line}`));
+  } catch (e) {
+    console.error("[circuit-breaker] failed to log top contributors:", e);
+  }
 }

@@ -6954,7 +6954,7 @@ const data3_0: Protocol[] = [
     category: "Lending",
     chains: ["Ethereum"],
     module: "morpho-aaveV3/index.js",
-    twitter: "MorphoLabs",
+    twitter: "Morpho",
     oraclesBreakdown: [ { name: "Chainlink", type: "Primary", proof: []} ],
     audit_links: ["https://docs.morpho.org/security-reviews"],
     listedAt: 1684901863,
@@ -13979,7 +13979,8 @@ const data3_0: Protocol[] = [
     listedAt: 1690979758,
     dimensions: {
       fees: "kiloex",
-      derivatives: "kiloex"
+      derivatives: "kiloex",
+      "open-interest": "kiloex"
     }
   },
   {
@@ -26146,6 +26147,7 @@ const data3_1: Protocol[] = [
     listedAt: 1701706347,
     dimensions: {
       fees: "stormtrade",
+      "open-interest": "stormtrade-oi",
       derivatives: {
         adapter: "stormtrade",
         genuineSpikes: [["2025-10-25", "-"]],
@@ -29369,7 +29371,7 @@ const data3_1: Protocol[] = [
     //   },
     // ],
     module: "morpho-blue/index.js",
-    twitter: "MorphoLabs",
+    twitter: "Morpho",
     audit_links: ["https://docs.morpho.org/morpho-blue/concepts/security/audits/"],
     parentProtocol: "parent#morpho",
     listedAt: 1705261273,
@@ -33110,6 +33112,10 @@ const data3_2: Protocol[] = [
     github: ["Scopuly"],
     listedAt: 1709034413,
     deadUrl: true,
+    dimensions: {
+      dexs: "Scopuly",
+      fees: "Scopuly"
+    }
   },
   {
     id: "4182",
@@ -46905,6 +46911,10 @@ const data3_3: Protocol[] = [
     twitter: "SoroswapFinance",
     github: ["soroswap"],
     listedAt: 1719170717,
+    dimensions: {
+      fees: "soroswap",
+      dexs: "soroswap"
+    }
   },
   {
     id: "4805",
@@ -57461,37 +57471,28 @@ const data3_3: Protocol[] = [
   },
   {
     id: "5287",
-    name: "Bonzo Finance",
+    name: "Bonzo Lend",
     address: "hedera:0x00000000000000000000000000000000007e545e",
     symbol: "BONZO",
     url: "https://bonzo.finance/",
     description: "The Liquidity Layer of Hedera: An open source, non-custodial lending protocol based on Aave",
     chain: "Hedera",
-    logo: `${baseIconsUrl}/bonzo-finance.png`,
+    logo: `${baseIconsUrl}/bonzo-lend.png`,
     audits: "2",
-    gecko_id: "bonzo-finance",
+    gecko_id: null,
     cmcId: null,
     category: "Lending",
     chains: ["Hedera"],
     oraclesBreakdown: [
-      {
-        name: "Chainlink",
-        type: "Primary",
-        proof: ["https://docs.bonzo.finance/hub/developer/oracles/chainlink", "https://bonzo.finance/blog/bonzo-finance-has-integrated-the-chainlink-standard-for-verifiable-data-on-hedera"]
-      },
-            {
-        name: "Supra",
-        type: "Secondary",
-        proof: ["https://docs.bonzo.finance/hub/developer/oracles/supra"]
-      },
+      {name: "Chainlink",type: "Primary",proof: ["https://docs.bonzo.finance/hub/developer/oracles/chainlink", "https://bonzo.finance/blog/bonzo-finance-has-integrated-the-chainlink-standard-for-verifiable-data-on-hedera"]},
+      {name: "Supra",type: "Secondary",proof: ["https://docs.bonzo.finance/hub/developer/oracles/supra"]},
     ],
     forkedFromIds: ["111"],
     module: "bonzo/index.js",
     twitter: "bonzo_finance",
-    treasury: "bonzo.js",
     audit_links: ["https://docs.bonzo.finance/hub/resources/audits"],
-    github: ["Bonzo-Labs"],
     listedAt: 1730054887,
+    parentProtocol: "parent#bonzo-finance",
     dimensions: {
       fees: "bonzo"
     }
@@ -57821,8 +57822,16 @@ const data3_3: Protocol[] = [
     parentProtocol: "parent#bulbaswap",
     listedAt: 1730321388,
     dimensions: {
-      fees: "bulbaswap-v3",
-      dexs: "bulbaswap-v3"
+      fees: {
+        adapter: "bulbaswap-v3",
+        genuineSpikes: [["2026-05-21", "-"]]
+      },
+      dexs: {
+        adapter: "bulbaswap-v3",
+        genuineSpikes: [
+          ["2026-05-21", "Bitget Wallet swap campaign on Morph ($80K USDC rewards)"] //https://x.com/MorphNetwork/status/2057446924677185906
+        ]
+      }
     }
   },
   {
@@ -58186,14 +58195,15 @@ const data3_3: Protocol[] = [
     cmcId: null,
     tags: ["AMM"],
     chains: ["Ethereum"],
-    module: "dummy.js",
+    module: "fluid-dex/index.js",
     twitter: "0xfluid",
     parentProtocol: "parent#fluid",
     listedAt: 1730732495,
     dimensions: {
       fees: "fluid-dex",
       dexs: "fluid-dex"
-    }
+    },
+    excludeTvlFromParent: true // collateral is consolidated across all fluid protocols (total tracked in fluid/index.js)
   },
   {
     id: "5318",
@@ -61962,7 +61972,8 @@ const data3_3: Protocol[] = [
     listedAt: 1734027989,
     dimensions: {
       fees: "sparkdex-perps",
-      derivatives: "sparkdex-perps"
+      derivatives: "sparkdex-perps",
+      "open-interest": "sparkdex-perps-oi"
     }
   },
   {

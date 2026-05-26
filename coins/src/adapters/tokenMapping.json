@@ -1076,6 +1076,16 @@
     }
   },
   "ethereum": {
+    "0xdA36Ab65d5Af53763CAcD63AE7D441932032326f": {
+      "decimals": "18",
+      "symbol": "morpho-frxUSD/sUSDS",
+      "to": "asset#ethereum:0x81a2612f6dea269a6dd1f6deab45c5424ee2c4b7"
+    },
+    "0x5E1DACDBEF6bcEba53600d0BcE33FD30EE09fA82": {
+      "decimals": "18",
+      "symbol": "stakedao-frxUSD/sUSDS",
+      "to": "asset#ethereum:0x81a2612f6dea269a6dd1f6deab45c5424ee2c4b7"
+    },
     "0x4fdb3cb3DBD6D24B64276645c1ADCb85cbB39dC6": {
       "decimals": "18",
       "symbol": "sd-FrxMsUSD-vault",
@@ -13342,19 +13352,19 @@
   },
   "mantra": {
     "uom": {
-      "to": "coingecko#mantra-dao",
+      "to": "coingecko#mantra",
       "decimals": 6,
       "symbol": "uom"
     },
     "0x0000000000000000000000000000000000000000": {
-      "to": "coingecko#mantra-dao",
+      "to": "coingecko#mantra",
       "decimals": 18,
       "symbol": "MANTRA"
     },
     "0xE3047710EF6cB36Bcf1E58145529778eA7Cb5598": {
-      "to": "coingecko#mantra-dao",
+      "to": "coingecko#mantra",
       "decimals": 18,
-      "symbol": "wOM"
+      "symbol": "wMANTRA"
     },
     "0xd2b95283011E47257917770D28Bb3EE44c849f6F": {
       "to": "coingecko#usd-coin",

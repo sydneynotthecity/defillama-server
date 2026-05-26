@@ -6086,6 +6086,21 @@ export const chainCoingeckoIds = {
     github: ["sentrix-labs"],
     chainId: 7119,
   },
+  "Defi Oracle Meta": {
+    geckoId: null,
+    symbol: null,
+    cmcId: null,
+    twitter: null,
+    url: "https://info.defi-oracle.io/",
+    chainId: 138,
+  },
+  "Vara": {
+    geckoId: "vara-network",
+    symbol: "VARA",
+    cmcId: "28067",
+    twitter: "VaraNetwork",
+    url: "https://start.vara.network/",
+  },
 } as unknown as ChainCoinGekcoIds;
 
 // We are creating the list here because, later in the code, we include historical chain labels with the same chain metadata, so, chainCoingeckoIds will have duplicate keys
@@ -6342,6 +6357,7 @@ const chainLabelMap = {
   "rise": "RISE",
   "aleo": "Aleo",
   "srx": "Sentrix",
+  "dfio_meta_main": "Defi Oracle Meta",
 } as { [key: string]: string }
 
 // When we decide to change the display name of a chain, we add the mapping for the new name here

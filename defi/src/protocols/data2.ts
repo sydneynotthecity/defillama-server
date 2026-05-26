@@ -13556,7 +13556,7 @@ const data2: Protocol[] = [
     category: "Lending",
     chains: ["Ethereum"],
     module: "morpho/index.js",
-    twitter: "MorphoLabs",
+    twitter: "Morpho",
     oraclesBreakdown: [ { name: "Chainlink", type: "Primary", proof: []} ],
     audit_links: ["https://docs.morpho.org/security-reviews"],
     listedAt: 1660946171,
@@ -13650,7 +13650,8 @@ const data2: Protocol[] = [
     parentProtocol: "parent#demex",
     listedAt: 1661118051,
     dimensions: {
-      derivatives: "demex-demex-perp"
+      derivatives: "demex-demex-perp",
+      "open-interest": "demex-perp"
     }
   },
   {
@@ -17435,7 +17436,7 @@ const data2: Protocol[] = [
     category: "Lending",
     chains: ["Ethereum"],
     module: "morpho-aave/index.js",
-    twitter: "MorphoLabs",
+    twitter: "Morpho",
     oraclesBreakdown: [ { name: "Chainlink", type: "Primary", proof: []} ],
     audit_links: ["https://docs.morpho.org/security-reviews"],
     listedAt: 1665186810,
