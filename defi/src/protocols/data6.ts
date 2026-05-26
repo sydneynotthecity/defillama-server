@@ -2125,7 +2125,8 @@ const data6: Protocol[] = [
       derivatives: {
         adapter: "risex-perps",
         genuineSpikes: [["2026-05-07", "-"]]
-      }
+      },
+      "normalized-volume": "risex"
     },
   },
   {
