@@ -28076,7 +28076,7 @@ const data4: Protocol[] = [
     listedAt: 1759188001,
     dimensions: {
       derivatives: "symmio",
-      'open-interest': "symmio",
+      'open-interest': "symmio-oi",
       fees: "symmio"
     },
     hallmarks: [
