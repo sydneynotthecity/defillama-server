@@ -32,12 +32,6 @@ const tokenMetadataBlacklist = new Set<string>([
   'hedera:0x39ceba2b467fa987546000eb5d1373acf1f3a2e1', // novatti-australian-digital-dollar (mirror node returns no symbol/decimals)
   'sophon:0x000000000000000000000000000000000000800a', // sophon system token (execution reverted)
   'tron:1002357', // gmcoin-2 — non-base58 address crashes sdk
-  // Stellar contract IDs (no '-' separator → no metadata path)
-  'stellar:cb44w727wslhpxj47a6dhf5d34rkwsozamedxo3cf5teeeq2zx4v3vri', // allunity-eur
-  'stellar:cbijbdnznf4x35bj4ffzwcdbsckop5nb4plg4snenrmlapyg4p5fm6vn', // solv-btc
-  'stellar:caup7nfabxe5tjrl3fktpmwrlc7iaxydcthqrfsclr5tmgkhooqo772j', // solv-protocol-solvbtc-bbn
-  'stellar:cac743nyrbms76l2dcpaxztoef6ejpkpvec5ox2sxy7hownxisslue2c', // usdm1
-  'stellar:cankbynnaykezxlb655f2upntazfk5hilzuxl7ztfr3nf6lkdsvy7kfh', // societe-generale-forge-eurcv
   // Algorand asset ids that aren't resolvable via algonode
   'algorand:2768603795', // quantoz-usdq
   'algorand:2768422954', // quantoz-eurq
@@ -84,6 +78,103 @@ export async function cacheSolanaTokens() {
     solanaTokens = _solanaTokens
   }
   return solanaTokens;
+}
+
+// --- Stellar contract token metadata ---------------------------------------
+// Classic Stellar assets are addressed as "CODE-ISSUER" and handled inline below
+// (always 7 decimals). Stellar contract tokens (Soroban / SEP-41) are addressed
+// by a bare "C..." strkey and have no dash to parse, so we fetch symbol/decimals
+// from the contract's instance storage METADATA map via Soroban RPC.
+//
+// Not every Soroban contract token exposes a METADATA map (the SEP-41 token
+// interface defines `decimals()`/`name()`/`symbol()` as functions; the METADATA
+// instance-storage convention is followed by the SAC and by SEP-41-compliant
+// WASM tokens but is not universal). Contracts without METADATA fall through
+// to undefined just like any other unresolvable token.
+
+const STELLAR_RPC = process.env.STELLAR_RPC ?? 'https://mainnet.sorobanrpc.com';
+const STELLAR_CONTRACT_STRKEY_RE = /^[Cc][A-Za-z2-7]{55}$/;
+const stellarContractMetaCache: Record<string, { symbol: string; decimals: number } | null> = {};
+
+// Decode a Stellar 'C...' strkey into its 32-byte contract-id payload.
+// (Local minimal base32 decode keeps this file dependency-free.)
+function decodeStellarContractStrKey(strkey: string): Buffer {
+  const s = strkey.toUpperCase();
+  if (!/^C[A-Z2-7]{55}$/.test(s)) throw new Error(`bad Stellar contract strkey: ${strkey}`);
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = 0, value = 0;
+  const bytes: number[] = [];
+  for (const ch of s) {
+    const idx = alphabet.indexOf(ch);
+    if (idx < 0) throw new Error(`bad base32 char in strkey: ${ch}`);
+    value = (value << 5) | idx;
+    bits += 5;
+    if (bits >= 8) { bits -= 8; bytes.push((value >> bits) & 0xff); }
+  }
+  // bytes = [versionByte, ...32-byte payload, ...2-byte CRC16]
+  return Buffer.from(bytes.slice(1, 33));
+}
+
+// Build base64-encoded XDR for the LedgerKey:
+//   LedgerKey::ContractData { contract: ScAddress::Contract(<id>),
+//                             key:      ScVal::LedgerKeyContractInstance,
+//                             durability: Persistent }
+// Verified byte-identical to @stellar/stellar-sdk output.
+function buildContractInstanceLedgerKey(contractStrKey: string): string {
+  const raw = decodeStellarContractStrKey(contractStrKey);
+  const buf = Buffer.alloc(48);
+  let o = 0;
+  buf.writeInt32BE(6, o);  o += 4;   // LedgerEntryType::CONTRACT_DATA
+  buf.writeInt32BE(1, o);  o += 4;   // SCAddressType::CONTRACT
+  raw.copy(buf, o);        o += 32;  // 32-byte contract id
+  buf.writeInt32BE(20, o); o += 4;   // SCValType::SCV_LEDGER_KEY_CONTRACT_INSTANCE
+  buf.writeInt32BE(1, o);  o += 4;   // ContractDataDurability::PERSISTENT
+  return buf.toString('base64');
+}
+
+async function getStellarContractMetadata(
+  contractStrKey: string,
+): Promise<{ symbol: string; decimals: number } | undefined> {
+  const cacheKey = contractStrKey.toUpperCase();
+  if (cacheKey in stellarContractMetaCache) {
+    return stellarContractMetaCache[cacheKey] ?? undefined;
+  }
+  try {
+    const keyB64 = buildContractInstanceLedgerKey(cacheKey);
+    const res: any = await fetch(STELLAR_RPC, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0', id: 1, method: 'getLedgerEntries',
+        params: { keys: [keyB64], xdrFormat: 'json' },
+      }),
+    }).then((r) => r.json());
+    const ci = res?.result?.entries?.[0]?.dataJson?.contract_data?.val?.contract_instance;
+    if (Array.isArray(ci?.storage)) {
+      for (const entry of ci.storage) {
+        if (entry?.key?.symbol !== 'METADATA' || !Array.isArray(entry?.val?.map)) continue;
+        let symbol: string | undefined;
+        let decimals: number | undefined;
+        for (const m of entry.val.map) {
+          const k = m?.key?.symbol;
+          // SACs use `decimal` (singular); SEP-41 WASM tokens conventionally use `decimals` (plural).
+          if ((k === 'decimal' || k === 'decimals') && typeof m?.val?.u32 === 'number') decimals = m.val.u32;
+          else if (k === 'symbol' && typeof m?.val?.string === 'string') symbol = m.val.string;
+        }
+        if (symbol && typeof decimals === 'number') {
+          const out = { symbol, decimals };
+          stellarContractMetaCache[cacheKey] = out;
+          return out;
+        }
+      }
+    }
+    stellarContractMetaCache[cacheKey] = null;
+    return;
+  } catch (e: any) {
+    console.log(`Failed to fetch Stellar contract metadata for ${contractStrKey}`, e?.message ?? e);
+    stellarContractMetaCache[cacheKey] = null;
+    return;
+  }
 }
 
 export async function getSymbolAndDecimals(
@@ -259,7 +350,14 @@ export async function getSymbolAndDecimals(
           // Classic Stellar assets use 7 decimal places.
           decimals: 7,
         }
-      } else { return; }
+      }
+      // Soroban / SEP-41 contract token (bare "C..." strkey, no dash):
+      // fetch symbol/decimals from the contract's instance storage METADATA map.
+      // Returns undefined for contracts that don't expose a METADATA map.
+      if (originalAddress && STELLAR_CONTRACT_STRKEY_RE.test(originalAddress)) {
+        return getStellarContractMetadata(originalAddress);
+      }
+      return;
 
     case 'near':
       if (tokenAddress.endsWith('.factory.bridge.near')) {
