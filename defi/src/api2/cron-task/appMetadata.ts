@@ -1001,6 +1001,8 @@ async function _storeAppMetadata() {
       }
     }
 
+    delete finalChains["off-chain"];
+
     Object.keys(finalChains).forEach((chain) => {
       finalChains[chain].dimAgg = dimensionsChainAggData[getChainKeyFromLabel(chain)] ?? {};
     });
