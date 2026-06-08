@@ -5,6 +5,7 @@ import { PublicKey } from "@solana/web3.js";
 import { getConnection } from "../adapters/solana/utils";
 import { chainsThatShouldNotBeLowerCased } from "../utils/shared/constants";
 import { cairoErc20Abis, call, feltArrToStr } from "../adapters/utils/starknet";
+import rpcProxy from "../adapters/utils/rpcProxy";
 
 // CoinGecko ids we deliberately DO NOT price — priced on-chain instead. MUST be honored in BOTH the
 // scheduled sync (scripts/coingecko.ts) AND the on-demand /current refetch (updateCoin.ts); otherwise
@@ -41,12 +42,10 @@ const tokenMetadataBlacklist = new Set<string>([
   'hedera:0x39ceba2b467fa987546000eb5d1373acf1f3a2e1', // novatti-australian-digital-dollar (mirror node returns no symbol/decimals)
   'sophon:0x000000000000000000000000000000000000800a', // sophon system token (execution reverted)
   'tron:1002357', // gmcoin-2 — non-base58 address crashes sdk
-  // Stellar contract IDs (no '-' separator → no metadata path)
-  'stellar:cb44w727wslhpxj47a6dhf5d34rkwsozamedxo3cf5teeeq2zx4v3vri', // allunity-eur
-  'stellar:cbijbdnznf4x35bj4ffzwcdbsckop5nb4plg4snenrmlapyg4p5fm6vn', // solv-btc
-  'stellar:caup7nfabxe5tjrl3fktpmwrlc7iaxydcthqrfsclr5tmgkhooqo772j', // solv-protocol-solvbtc-bbn
-  'stellar:cac743nyrbms76l2dcpaxztoef6ejpkpvec5ox2sxy7hownxisslue2c', // usdm1
-  'stellar:cankbynnaykezxlb655f2upntazfk5hilzuxl7ztfr3nf6lkdsvy7kfh', // societe-generale-forge-eurcv
+  // NOTE: Stellar contract tokens (Soroban SAC / SEP-41 — contract IDs starting
+  // with "C", no "-" separator) used to be blacklisted here because the metadata
+  // path only handled classic "CODE-ISSUER" assets. They are now resolved via the
+  // Soroban token interface in getSymbolAndDecimals(), so they are no longer skipped.
   // Algorand asset ids that aren't resolvable via algonode
   'algorand:2768603795', // quantoz-usdq
   'algorand:2768422954', // quantoz-eurq
@@ -262,13 +261,36 @@ export async function getSymbolAndDecimals(
       }
 
     case 'stellar':
+      // Classic Stellar assets are keyed as "CODE-ISSUER": the code before the
+      // dash is the symbol and classic assets always use 7 decimals.
       if (originalAddress?.includes('-')) {
         return {
           symbol: originalAddress.split('-')[0],
           // Classic Stellar assets use 7 decimal places.
           decimals: 7,
         }
-      } else { return; }
+      }
+      // Otherwise this is a Stellar contract token (Soroban SAC / SEP-41) — a
+      // contract ID (StrKey starting with "C", no "-" separator). These carry no
+      // code/issuer, so symbol & decimals must be read from the token contract
+      // itself via the Soroban token interface. StrKey is uppercase base32, so
+      // recover the canonical casing (the address is lowercased upstream).
+      try {
+        const contractId = (originalAddress ?? tokenAddress).toUpperCase();
+        const [rawSymbol, rawDecimals] = await Promise.all([
+          rpcProxy.stellar.contractCall(contractId, "symbol"),
+          rpcProxy.stellar.contractCall(contractId, "decimals"),
+        ]);
+        const decimals = Number(rawDecimals);
+        if (rawSymbol == null || rawSymbol === "" || !Number.isFinite(decimals)) {
+          console.log(`Stellar contract token data missing symbol or decimals for ${contractId}`, { symbol: rawSymbol, decimals: rawDecimals });
+          return;
+        }
+        return { symbol: String(rawSymbol), decimals };
+      } catch (e) {
+        console.log(`Failed to fetch Stellar contract token data for ${originalAddress ?? tokenAddress}`, (e as any)?.message ?? e);
+        return;
+      }
 
     case 'near':
       if (tokenAddress.endsWith('.factory.bridge.near')) {
